@@ -2,40 +2,66 @@ import React, { Component} from "react";
 import { Map, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import Control from "react-leaflet-control"
 import "./App.css";
+import axios from 'axios';
+
+const server = 'https://cool-reach-265406.appspot.com/';
 
 class App extends Component {
   constructor() {
     super();
     this.state = {
       markers: [
-        [-8.571246, 115.311178],
+        // [-8.571246, 115.311178],
         // [-8.554540888307615, 115.28263092041017],
         // [-8.58373704233361, 115.29945373535158],
         // [-8.572534132055914, 115.3502655029297],
       ],
-      polyline: [
-        [-8.554540888307615, 115.28263092041017],
-      ]
+      polyline: []
     };
   }
 
-  addMarker = (e) => {
-    const {markers} = this.state
-    let mark = [e.latlng.lat, e.latlng.lng]
-    markers.push(mark)
-    this.setState({markers})
-    console.log(mark)
+  componentDidMount() {
+    let initialPosition = [];
+
+    axios.get(`${server}/api/location`)
+      .then(({data}) => {
+        data.map(loc => initialPosition.push([loc.latitude, loc.longitude]))
+        this.setState({polyline: initialPosition})
+      });
   }
 
-  clearMarker = () => {
-    this.setState({markers: [[-8.571246, 115.311178]]})
+  addToWeb = (latitude, longitude) => {
+    axios.post(`${server}/api/location`, {
+      latitude: latitude,
+      longitude: longitude
+    })
+      .then(({data}) => console.log(data))
+  }
+
+  truncateTable = () => {
+    axios.post(`${server}/api/location/delete`, {})
+      .then(({data}) => console.log(data))
+  }
+
+  addPolyline = (e) => {
+    const {polyline} = this.state
+    let loc = [e.latlng.lat, e.latlng.lng]
+    polyline.push(loc)
+    this.setState({polyline})
+    this.addToWeb(e.latlng.lat, e.latlng.lng)
+    console.log(loc)
+  }
+
+  clearPolyline = () => {
+    this.setState({polyline: []})
+    this.truncateTable()
   }
 
   render() {
     return (
       <Map 
         center={[-8.571246, 115.311178]} 
-        onClick={this.addMarker}
+        onClick={this.addPolyline}
         zoom={13} 
       >
         <TileLayer
@@ -44,7 +70,7 @@ class App extends Component {
         />
 
         <Control position="topright">
-          <button onClick={this.clearMarker}>Clear</button>
+          <button onClick={this.clearPolyline}>Clear</button>
         </Control>
 
         {/* {this.state.markers.map((position, idx) => 
@@ -54,10 +80,8 @@ class App extends Component {
             </Popup>
           </Marker>
           )} */}
-        {this.state.markers.reduce((x, y) => 
-          <Polyline key={`marker-${y}`} color="lime" positions={this.state.markers} />
-        )}
-        
+
+        <Polyline key={`marker-${this.state.polyline.length}`} color="lime" positions={this.state.polyline} />        
 
       </Map>
     );
